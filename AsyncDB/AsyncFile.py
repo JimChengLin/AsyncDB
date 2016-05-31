@@ -25,12 +25,10 @@ class FastIO:
         self.seek(offset)
         self.cursor = offset + len(data)
         self.file.write(data)
-        self.file.flush()
 
     def exec(self, offset: int, action: Callable):
         self.seek(offset)
         result = action(self.file)
-        self.file.flush()
         self.cursor = self.file.tell()
         return result
 
@@ -39,7 +37,7 @@ class AsyncFile:
     def __init__(self, filename: str, io_num=4):
         self.size = getsize(filename)
         self.executor = ThreadPoolExecutor(io_num)
-        self.io_que = deque((FastIO(filename) for _ in range(io_num + 1)), io_num + 1)
+        self.io_que = deque((FastIO(filename) for _ in range(io_num)), io_num)
 
     async def read(self, offset: int, length: int):
         def async_call():

@@ -102,7 +102,6 @@ class BasicEngine:
             self.ensure_write(token, ptr, data, depend)
         self.time_travel(token, self.root)
         self.root = self.root.clone()
-        self.file.flush()
 
     def ensure_write(self, token: Task, ptr: int, data: bytes, depend=0):
         async def coro():
@@ -329,7 +328,6 @@ class Engine(BasicEngine):
         val.ptr = self.malloc(val.size)
         self.file.seek(val.ptr)
         self.file.write(val_b)
-        self.file.flush()
 
         cursor.keys.insert(index, val.key)
         cursor.ptrs_value.insert(index, val.ptr)
@@ -554,15 +552,6 @@ class Engine(BasicEngine):
                 # 命令
                 command_map.update({address: (pack('Q', init.ptr), depend), init.ptr: init_b})
                 return val.value
-
-            def root_is_empty(successor: IndexNode):
-                free_nodes.append(self.root)
-                _ = None
-                for ptr, head, tail in ((address, self.root.ptr, successor.ptr),
-                                        (self.root.ptr, self.root, _), (successor.ptr, _, successor)):
-                    self.task_que.set(token, ptr, head, tail)
-                command_map[address] = pack('Q', successor.ptr)
-                self.root = successor
 
             def root_is_empty(successor: IndexNode):
                 free_nodes.append(self.root)
