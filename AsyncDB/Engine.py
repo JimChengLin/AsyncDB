@@ -1,10 +1,11 @@
-from asyncio import ensure_future, Lock
+from asyncio import ensure_future, Lock, sleep, get_event_loop
 from bisect import insort, bisect, bisect_left
 from collections import UserList
 from contextlib import suppress
-from os import remove, rename
+from multiprocessing import Process
+from os import rename, remove
 from os.path import getsize, isfile
-from pickle import load, dump, UnpicklingError
+from pickle import load, UnpicklingError
 from struct import pack, unpack
 
 from .Allocator import Allocator
@@ -38,7 +39,10 @@ class BasicEngine:
             with open(filename, 'rb+') as file:
                 if file.read(1) == OP:
                     file.close()
-                    return BasicEngine.repair(filename)
+                    p = Process(target=repair, args=(filename,))
+                    p.start()
+                    p.join()
+                    return self.__init__(filename)
                 else:
                     ptr = unpack('Q', file.read(8))[0]
                     file.seek(ptr)
@@ -130,11 +134,14 @@ class BasicEngine:
         self.file.close()
         self.async_file.close()
 
-    @staticmethod
-    def repair(filename: str):
+
+def repair(filename: str):
+    async def coro():
         temp = '__' + filename
+        engine = Engine(temp)
+
         size = getsize(filename)
-        with open(filename, 'rb') as file, open('$' + temp, 'wb') as items:
+        with open(filename, 'rb') as file:
             file.seek(9)
             while file.tell() != size:
                 indicator = file.read(1)
@@ -143,31 +150,22 @@ class BasicEngine:
                 with suppress(EOFError, UnpicklingError):
                     item = load(file)
                     if isinstance(item, tuple) and len(item) == 2:
-                        dump(item, items)
-        rename('$' + temp, temp)
+                        engine.set(*item)
+                        await sleep(0)
+
+        if engine.task_que.que:
+            await engine.lock.acquire()
+            await engine.lock.acquire()
+        engine.close()
+        remove(filename)
+        rename(temp, filename)
+
+    loop = get_event_loop()
+    loop.run_until_complete(coro())
 
 
 class Engine(BasicEngine):
     # B-Tree核心
-    def __init__(self, filename: str):
-        temp = '__' + filename
-        if not isfile(temp):
-            super().__init__(filename)
-
-        if isfile(temp):
-            if isfile(filename):
-                remove(filename)
-
-            super().__init__(filename)
-            with open(temp, 'rb') as items:
-                while True:
-                    try:
-                        key, value = load(items)
-                        self.set(key, value)
-                    except EOFError:
-                        break
-            remove(temp)
-
     async def get(self, key):
         token = self.task_que.create(is_active=False)
         token.command_num += 1
@@ -222,7 +220,7 @@ class Engine(BasicEngine):
                 self.async_file.size += val.size
                 # 状态设为0
                 self.file.seek(org_val.ptr)
-                self.file.write(pack('B', 0))
+                self.file.write(OP)
 
                 # 释放
                 token.free_param = lambda: self.free(org_val.ptr, org_val.size)
@@ -353,7 +351,7 @@ class Engine(BasicEngine):
 
         def indicate(val: ValueNode):
             self.file.seek(val.ptr)
-            self.file.write(pack('B', 0))
+            self.file.write(OP)
             token.free_param = lambda: self.free(val.ptr, val.size)
 
         def fetch(ptr: int) -> IndexNode:
