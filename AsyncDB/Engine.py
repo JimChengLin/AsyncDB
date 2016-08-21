@@ -19,6 +19,7 @@ class SortedList(UserList):
         insort(self.data, item)
 
 
+_ = None
 OP = b'\x00'
 ED = b'\x01'
 MIN_DEGREE = 128
@@ -517,7 +518,6 @@ class Engine(BasicEngine):
             # 释放
             free_nodes.extend((org_par, org_cursor, right_child))
             # 同步
-            _ = None
             for ptr, head, tail in ((address, org_par.ptr, par.ptr),
                                     (org_par.ptr, org_par, _), (par.ptr, _, par),
                                     (org_cursor.ptr, org_cursor, _), (cursor.ptr, _, cursor),
@@ -543,7 +543,6 @@ class Engine(BasicEngine):
                 indicate(val)
                 free_nodes.append(org_init)
                 # 同步
-                _ = None
                 for ptr, head, tail in ((address, org_init.ptr, init.ptr),
                                         (org_init.ptr, org_init, _), (init.ptr, _, init)):
                     self.task_que.set(token, ptr, head, tail)
@@ -553,7 +552,6 @@ class Engine(BasicEngine):
 
             def root_is_empty(successor: IndexNode):
                 free_nodes.append(self.root)
-                _ = None
                 for ptr, head, tail in ((address, self.root.ptr, successor.ptr),
                                         (self.root.ptr, self.root, _), (successor.ptr, _, successor)):
                     self.task_que.set(token, ptr, head, tail)
