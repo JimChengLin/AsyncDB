@@ -100,8 +100,11 @@ class BasicEngine:
 
     # cum = cumulation
     def do_cum(self, token: Task, free_nodes, command_map):
-        for node in free_nodes:
-            self.free(node.ptr, node.size)
+        def func():
+            for node in free_nodes:
+                self.free(node.ptr, node.size)
+
+        token.free_param = func
         for ptr, param in command_map.items():
             data, depend = param if isinstance(param, tuple) else (param, 0)
             self.ensure_write(token, ptr, data, depend)
@@ -224,7 +227,7 @@ class Engine(BasicEngine):
                 self.file.write(OP)
 
                 # 释放
-                token.free_param = lambda: self.free(org_val.ptr, org_val.size)
+                free_nodes.append(org_val)
                 # 同步
                 self.task_que.set(token, address, org_val.ptr, val.ptr)
                 # 命令
@@ -353,7 +356,7 @@ class Engine(BasicEngine):
         def indicate(val: ValueNode):
             self.file.seek(val.ptr)
             self.file.write(OP)
-            token.free_param = lambda: self.free(val.ptr, val.size)
+            free_nodes.append(val)
 
         def fetch(ptr: int) -> IndexNode:
             result = self.task_que.get(token, ptr)

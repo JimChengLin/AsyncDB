@@ -1,6 +1,5 @@
 from bisect import bisect
 from collections import deque, namedtuple
-from collections.abc import Callable
 
 Memo = namedtuple('Memo', 'head tail')
 
@@ -100,8 +99,7 @@ class TaskQue:
                 break
             else:
                 if head.is_active:
-                    if isinstance(head.free_param, Callable):
-                        head.free_param()
+                    head.free_param()
                     for ptr in head.ptrs:
                         id_list, memo_list = self.virtual_map[ptr]
                         del id_list[0]
