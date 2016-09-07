@@ -71,6 +71,9 @@ class BasicEngine:
             ptr = 0
         if not ptr:
             ptr = self.async_file.size
+            if is_inside(ptr):
+                ptr += 1
+                self.async_file.size += 2
             self.async_file.size += size
         return ptr
 
@@ -98,7 +101,7 @@ class BasicEngine:
             if not self.task_que.que and self.lock.locked():
                 self.lock.release()
 
-    # cum = cumulation
+    # cumulation
     def do_cum(self, token: Task, free_nodes, command_map):
         def func():
             for node in free_nodes:
