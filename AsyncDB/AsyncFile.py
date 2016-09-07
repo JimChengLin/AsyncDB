@@ -9,7 +9,9 @@ loop = get_event_loop()
 
 def rescue(func):
     def wrapper(*args, **kwargs):
-        for _ in range(2):
+        try:
+            return func(*args, **kwargs)
+        except:
             return func(*args, **kwargs)
 
     return wrapper
