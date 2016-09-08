@@ -11,7 +11,7 @@ def rescue(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except:
+        except Exception:
             return func(*args, **kwargs)
 
     return wrapper
