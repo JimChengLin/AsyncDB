@@ -2,12 +2,14 @@ from asyncio import get_event_loop
 from collections import deque
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from functools import wraps
 from os.path import getsize
 
 loop = get_event_loop()
 
 
 def rescue(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
