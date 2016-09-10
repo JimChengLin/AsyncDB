@@ -56,22 +56,23 @@ class BasicEngine:
         self.command_que = SortedList()
         self.file = open(filename, 'rb+', buffering=0)
         self.lock = Lock()
-        self.on_interval = (0, 1)
+        self.on_interval = (0, 0)
         self.on_write = False
         self.task_que = TaskQue()
 
     def malloc(self, size: int) -> int:
-        def is_inside(ptr: int) -> bool:
-            begin, end = self.on_interval
-            return begin <= ptr <= end or begin <= ptr + size <= end
+        def is_inside(ptr: int, size: int) -> bool:
+            if self.on_write:
+                begin, end = self.on_interval
+                return min(ptr + size, end) - max(ptr, begin) >= 0
 
         ptr = self.allocator.malloc(size)
-        if ptr and is_inside(ptr):
+        if ptr and is_inside(ptr, size):
             self.free(ptr, size)
             ptr = 0
         if not ptr:
             ptr = self.async_file.size
-            if is_inside(ptr):
+            if is_inside(ptr, size):
                 ptr += 1
                 self.async_file.size += 2
             self.async_file.size += size

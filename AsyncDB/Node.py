@@ -1,5 +1,5 @@
 from gzip import compress, decompress
-from io import BytesIO
+from io import FileIO
 from pickle import dumps, load, loads
 from struct import pack, unpack
 
@@ -8,7 +8,7 @@ ED = b'\x01'
 
 
 class IndexNode:
-    def __init__(self, is_leaf=True, file: BytesIO = None):
+    def __init__(self, is_leaf=True, file: FileIO = None):
         self.ptr = 0
         self.size = 0
 
@@ -28,7 +28,7 @@ class IndexNode:
         self.size = len(result)
         return result
 
-    def load(self, file: BytesIO):
+    def load(self, file: FileIO):
         self.ptr = file.tell()
         self.is_leaf, self.keys = loads(decompress(load(file)))
 
@@ -45,7 +45,7 @@ class IndexNode:
             self.ptrs_child = list(ptrs[ptr_num:])
         self.size = file.tell() - self.ptr
 
-    def dump(self, file: BytesIO):
+    def dump(self, file: FileIO):
         self.ptr = file.tell()
         file.write(bytes(self))
 
@@ -72,7 +72,7 @@ class IndexNode:
 
 
 class ValueNode:
-    def __init__(self, key=None, value=None, file: BytesIO = None):
+    def __init__(self, key=None, value=None, file: FileIO = None):
         self.ptr = 0
         self.size = 0
 
@@ -89,13 +89,13 @@ class ValueNode:
         self.size = len(result)
         return result
 
-    def load(self, file: BytesIO):
+    def load(self, file: FileIO):
         self.ptr = file.tell()
         indicator = file.read(1)
         assert indicator in (OP, ED)
         self.key, self.value = load(file)
         self.size = file.tell() - self.ptr
 
-    def dump(self, file: BytesIO):
+    def dump(self, file: FileIO):
         self.ptr = file.tell()
         file.write(bytes(self))
