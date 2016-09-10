@@ -19,7 +19,6 @@ class SortedList(UserList):
         insort(self.data, item)
 
 
-_ = None
 OP = b'\x00'
 ED = b'\x01'
 MIN_DEGREE = 128
@@ -214,7 +213,7 @@ class Engine(BasicEngine):
     def set(self, key, value):
         token = self.task_que.create(is_active=True)
         free_nodes = []
-        # command_map: {..., ptr: data OR (data, depend)}
+        # {..., ptr: data OR (data, depend)}
         command_map = {}
 
         def replace(address: int, ptr: int, depend: int):
@@ -291,14 +290,14 @@ class Engine(BasicEngine):
             root.ptrs_child.append(self.root.ptr)
             split(address, root, 0, self.root, depend)
             self.root = cursor = root
+        index = bisect(cursor.keys, key)
+        # 检查key是否已存在
+        if cursor.keys and cursor.keys[index - 1] == key:
+            return replace(cursor.nth_value_ads(index - 1), cursor.ptrs_value[index - 1], cursor.ptr)
 
         # 向下循环直到叶节点
         while not cursor.is_leaf:
             index = bisect(cursor.keys, key)
-            # 检查key是否已存在
-            if cursor.keys[index - 1] == key:
-                return replace(cursor.nth_value_ads(index - 1), cursor.ptrs_value[index - 1], cursor.ptr)
-
             ptr = cursor.ptrs_child[index]
             child = self.task_que.get(token, ptr)
             if not child:
@@ -317,24 +316,19 @@ class Engine(BasicEngine):
                     index += 1
                     ptr = cursor.ptrs_child[index]
                     child = self.task_que.get(token, ptr)
-
             address = cursor.nth_child_ads(index)
             depend = cursor.ptr
             cursor = child
 
         # 到达叶节点
-        index = bisect(cursor.keys, key)
-        # cursor可能是root且可能为空
-        if cursor is self.root and cursor.keys and cursor.keys[index - 1] == key:
-            return replace(cursor.nth_value_ads(index - 1), cursor.ptrs_value[index - 1], cursor.ptr)
-
-        org_cursor = cursor.clone()
         val = ValueNode(key, value)
         val_b = bytes(val)
         val.ptr = self.malloc(val.size)
         self.file.seek(val.ptr)
         self.file.write(val_b)
 
+        org_cursor = cursor.clone()
+        index = bisect(cursor.keys, key)
         cursor.keys.insert(index, val.key)
         cursor.ptrs_value.insert(index, val.ptr)
         cursor_b = bytes(cursor)
@@ -370,8 +364,8 @@ class Engine(BasicEngine):
             self.time_travel(token, result)
             return result
 
-        def rotate_left(address: int, par: IndexNode, val_index: int,
-                        left_child: IndexNode, right_child: IndexNode, depend: int):
+        def left_to_right(address: int, par: IndexNode, val_index: int,
+                          left_child: IndexNode, right_child: IndexNode, depend: int):
             org_par = par.clone()
             org_left = left_child.clone()
             org_right = right_child.clone()
@@ -416,8 +410,8 @@ class Engine(BasicEngine):
             command_map.update({address: (pack('Q', par.ptr), depend),
                                 par.ptr: par_b, left_child.ptr: left_b, right_child.ptr: right_b})
 
-        def rotate_right(address: int, par: IndexNode, val_index: int,
-                         left_child: IndexNode, right_child: IndexNode, depend: int):
+        def right_to_left(address: int, par: IndexNode, val_index: int,
+                          left_child: IndexNode, right_child: IndexNode, depend: int):
             org_par = par.clone()
             org_left = left_child.clone()
             org_right = right_child.clone()
@@ -525,6 +519,7 @@ class Engine(BasicEngine):
             # 释放
             free_nodes.extend((org_par, org_cursor, right_child))
             # 同步
+            _ = None
             for ptr, head, tail in ((address, org_par.ptr, par.ptr),
                                     (org_par.ptr, org_par, _), (par.ptr, _, par),
                                     (org_cursor.ptr, org_cursor, _), (cursor.ptr, _, cursor),
@@ -550,6 +545,7 @@ class Engine(BasicEngine):
                 indicate(val)
                 free_nodes.append(org_init)
                 # 同步
+                _ = None
                 for ptr, head, tail in ((address, org_init.ptr, init.ptr),
                                         (org_init.ptr, org_init, _), (init.ptr, _, init)):
                     self.task_que.set(token, ptr, head, tail)
@@ -557,8 +553,9 @@ class Engine(BasicEngine):
                 command_map.update({address: (pack('Q', init.ptr), depend), init.ptr: init_b})
                 return val.value
 
-            def root_is_empty(successor: IndexNode):
+            def root_empty(successor: IndexNode):
                 free_nodes.append(self.root)
+                _ = None
                 for ptr, head, tail in ((address, self.root.ptr, successor.ptr),
                                         (self.root.ptr, self.root, _), (successor.ptr, _, successor)):
                     self.task_que.set(token, ptr, head, tail)
@@ -577,19 +574,19 @@ class Engine(BasicEngine):
                     right_ptr = init.ptrs_child[index + 1]
                     right_child = fetch(right_ptr)
 
-                    # 左子节点 >= t
+                    # 左 >= t
                     if len(left_child.keys) >= MIN_DEGREE:
-                        rotate_left(address, init, index, left_child, right_child, depend)
+                        left_to_right(address, init, index, left_child, right_child, depend)
                         return travel(init.nth_child_ads(index + 1), right_child, key, init.ptr)
-                    # 右子节点 >= t
+                    # 右 >= t
                     elif len(right_child.keys) >= MIN_DEGREE:
-                        rotate_right(address, init, index, left_child, right_child, depend)
+                        right_to_left(address, init, index, left_child, right_child, depend)
                         return travel(init.nth_child_ads(index), left_child, key, init.ptr)
-                    # 左右子节点均 < t
+                    # 左右均 < t
                     else:
                         merge_left(address, init, index, left_child, right_child, depend)
                         if len(self.root.keys) == 0:
-                            root_is_empty(right_child)
+                            root_empty(right_child)
                         return travel(init.nth_child_ads(index), right_child, key, init.ptr)
             # 向下寻找
             elif not init.is_leaf:
@@ -604,27 +601,27 @@ class Engine(BasicEngine):
                     if index - 1 >= 0:
                         left_ptr = init.ptrs_child[index - 1]
                         left_sibling = fetch(left_ptr)
-                        # 左sibling >= t
+                        # 左 >= t
                         if len(left_sibling.keys) >= MIN_DEGREE:
-                            rotate_left(address, init, index - 1, left_sibling, cursor, depend)
+                            left_to_right(address, init, index - 1, left_sibling, cursor, depend)
                             return travel(init.nth_child_ads(index), cursor, key, init.ptr)
 
                     if index + 1 < len(init.ptrs_child):
                         right_ptr = init.ptrs_child[index + 1]
                         right_sibling = fetch(right_ptr)
-                        # 右sibling >= t
+                        # 右 >= t
                         if len(right_sibling.keys) >= MIN_DEGREE:
-                            rotate_right(address, init, index, cursor, right_sibling, depend)
+                            right_to_left(address, init, index, cursor, right_sibling, depend)
                             return travel(init.nth_child_ads(index), cursor, key, init.ptr)
 
-                    # 无sibling >= t
+                    # 无 >= t
                     if left_sibling:
                         index -= 1
                         merge_left(address, init, index, left_sibling, cursor, depend)
                     else:
                         merge_right(address, init, index, cursor, right_sibling, depend)
                     if len(self.root.keys) == 0:
-                        root_is_empty(cursor)
+                        root_empty(cursor)
                 return travel(init.nth_child_ads(index), cursor, key, init.ptr)
 
         travel(1, self.root, key, 0)
@@ -658,7 +655,6 @@ class Engine(BasicEngine):
             extend = not init.is_leaf and (item_from is None or lo == len(init.keys) or init.keys[lo] > item_from)
             if not reverse and extend:
                 await travel(await get_child(lo))
-
             for i in range(lo, hi) if not reverse else reversed(range(lo, hi)):
                 if reverse and not init.is_leaf:
                     await travel(await get_child(i + 1))
@@ -670,7 +666,6 @@ class Engine(BasicEngine):
 
                 if not reverse and not init.is_leaf:
                     await travel(await get_child(i + 1))
-
             if reverse and extend:
                 await travel(await get_child(lo))
 
