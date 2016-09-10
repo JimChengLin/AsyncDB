@@ -1,11 +1,14 @@
 from gzip import compress, decompress
-from io import FileIO
+from io import BytesIO
 from pickle import dumps, load, loads
 from struct import pack, unpack
 
+OP = b'\x00'
+ED = b'\x01'
+
 
 class IndexNode:
-    def __init__(self, is_leaf=True, file: FileIO = None):
+    def __init__(self, is_leaf=True, file: BytesIO = None):
         self.ptr = 0
         self.size = 0
 
@@ -25,7 +28,7 @@ class IndexNode:
         self.size = len(result)
         return result
 
-    def load(self, file: FileIO):
+    def load(self, file: BytesIO):
         self.ptr = file.tell()
         self.is_leaf, self.keys = loads(decompress(load(file)))
 
@@ -37,11 +40,12 @@ class IndexNode:
         if self.is_leaf:
             self.ptrs_value = list(ptrs)
         else:
-            self.ptrs_value = list(ptrs[:len(self.keys)])
-            self.ptrs_child = list(ptrs[len(self.keys):])
+            ptr_num //= 2
+            self.ptrs_value = list(ptrs[:ptr_num])
+            self.ptrs_child = list(ptrs[ptr_num:])
         self.size = file.tell() - self.ptr
 
-    def dump(self, file: FileIO):
+    def dump(self, file: BytesIO):
         self.ptr = file.tell()
         file.write(bytes(self))
 
@@ -57,16 +61,18 @@ class IndexNode:
         return result
 
     def nth_child_ads(self, n: int) -> int:
-        assert self.ptr > 0 and self.size > 0
+        assert self.ptr > 0 and self.size > 0 and not self.is_leaf
+        # sub_num = val_num + 1
         return self.ptr + self.size - (len(self.keys) + 1 - n) * 8
 
     def nth_value_ads(self, n: int) -> int:
+        assert self.ptr > 0 and self.size > 0
         tail = self.ptr + self.size if self.is_leaf else self.nth_child_ads(0)
         return tail - (len(self.keys) - n) * 8
 
 
 class ValueNode:
-    def __init__(self, key=None, value=None, file: FileIO = None):
+    def __init__(self, key=None, value=None, file: BytesIO = None):
         self.ptr = 0
         self.size = 0
 
@@ -79,17 +85,17 @@ class ValueNode:
     def __bytes__(self):
         assert self.key is not None
         # 0删除 1正常
-        result = pack('B', 1) + dumps((self.key, self.value))
+        result = ED + dumps((self.key, self.value))
         self.size = len(result)
         return result
 
-    def load(self, file: FileIO):
+    def load(self, file: BytesIO):
         self.ptr = file.tell()
         indicator = file.read(1)
-        assert unpack('B', indicator)[0] in (0, 1)
+        assert indicator in (OP, ED)
         self.key, self.value = load(file)
         self.size = file.tell() - self.ptr
 
-    def dump(self, file: FileIO):
+    def dump(self, file: BytesIO):
         self.ptr = file.tell()
         file.write(bytes(self))
