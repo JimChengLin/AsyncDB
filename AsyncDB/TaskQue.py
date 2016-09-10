@@ -5,7 +5,7 @@ Memo = namedtuple('Memo', 'head tail')
 
 
 class Task:
-    # Query有对应Task，用于查询和清理映射
+    # Query有对应Task，用于维护映射
     def __init__(self, task_id: int, is_active: bool, command_num=0):
         self.id = task_id
         self.is_active = is_active
@@ -13,7 +13,7 @@ class Task:
 
         if is_active:
             self.ptrs = []
-            # free_param: (ptr, size)
+            # (ptr, size)
             self.free_param = None
 
     def __lt__(self, other: 'Task'):
@@ -25,7 +25,7 @@ class TaskQue:
     def __init__(self):
         self.next_id = 0
         self.que = deque()
-        # virtual_map: {..., ptr: ([..., id], [..., memo])}
+        # {..., ptr: ([..., id], [..., memo])}
         self.virtual_map = {}
 
     def create(self, is_active: bool) -> Task:
