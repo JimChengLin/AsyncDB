@@ -21,7 +21,7 @@ async def acid_t():
         db_value = await db[key]
         assert db_value == expect_value
 
-    for i in range(T):
+    for _ in range(T):
         # 增改
         if randint(0, 1):
             rand_key = randint(0, M)
@@ -84,7 +84,7 @@ async def acid_t():
 
 def main():
     loop = get_event_loop()
-    for i in range(1000):
+    for _ in range(1000):
         loop.run_until_complete(acid_t())
         remove(FILE)
 
