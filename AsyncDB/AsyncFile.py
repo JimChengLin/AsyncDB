@@ -1,6 +1,5 @@
 from asyncio import get_event_loop
 from collections import deque
-from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from os.path import getsize
@@ -42,7 +41,7 @@ class FastIO:
         self.file.write(data)
 
     @rescue
-    def exec(self, offset: int, action: Callable):
+    def exec(self, offset: int, action: callable):
         self.seek(offset)
         result = action(self.file)
         self.cursor = self.file.tell()
@@ -74,7 +73,7 @@ class AsyncFile:
 
         await loop.run_in_executor(self.executor, async_call)
 
-    async def exec(self, offset: int, action: Callable):
+    async def exec(self, offset: int, action: callable):
         def async_call():
             io = self.io_que.popleft()
             result = io.exec(offset, action)
