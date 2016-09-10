@@ -35,11 +35,11 @@ class SizeMap(UserDict):
 
 class Allocator:
     def __init__(self):
-        # size_que: [..., size]
+        # [..., size]
         self.size_que = SizeQue()
-        # size_map: {..., size: [..., ptr]}
+        # {..., size: [..., ptr]}
         self.size_map = SizeMap()
-        # ptr_map: {..., ptr: size}
+        # {..., ptr: size}
         self.ptr_map = {}
 
     def malloc(self, size: int) -> int:
@@ -60,7 +60,7 @@ class Allocator:
         if size == 0:
             return
 
-        # 检测是否合并
+        # 尝试合并
         tail_ptr = ptr + size
         while tail_ptr in self.ptr_map:
             tail_size = self.ptr_map.pop(tail_ptr)
@@ -84,8 +84,8 @@ class Allocator:
             else:
                 self.ptr_map[ptr] = size
                 self.size_map.add(size, ptr)
-            # 溢出
-            if size_remove:
-                for ptr in self.size_map[size_remove]:
-                    del self.ptr_map[ptr]
-                del self.size_map[size_remove]
+                # 溢出
+                if size_remove:
+                    for ptr in self.size_map[size_remove]:
+                        del self.ptr_map[ptr]
+                    del self.size_map[size_remove]
