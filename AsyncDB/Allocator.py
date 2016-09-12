@@ -84,8 +84,8 @@ class Allocator:
             else:
                 self.ptr_map[ptr] = size
                 self.size_map.add(size, ptr)
-                # 溢出
-                if size_remove:
-                    for ptr in self.size_map[size_remove]:
-                        del self.ptr_map[ptr]
-                    del self.size_map[size_remove]
+            # 溢出
+            if size_remove:
+                for ptr in self.size_map[size_remove]:
+                    del self.ptr_map[ptr]
+                del self.size_map[size_remove]
