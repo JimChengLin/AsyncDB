@@ -5,8 +5,8 @@ from random import randint
 
 from AsyncDB import AsyncDB
 
-T = 10000
-M = 10000
+T = 200000
+M = 200000
 FILE = 'Test.db'
 
 
@@ -84,7 +84,7 @@ async def acid_t():
 
 def main():
     loop = get_event_loop()
-    for _ in range(1000):
+    for _ in range(50):
         loop.run_until_complete(acid_t())
         remove(FILE)
 
