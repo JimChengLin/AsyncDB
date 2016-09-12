@@ -61,7 +61,7 @@ class IndexNode:
 
     def nth_child_ads(self, n: int) -> int:
         assert self.ptr > 0 and self.size > 0 and not self.is_leaf
-        # sub_num = val_num + 1
+        # children_num = val_num + 1
         return self.ptr + self.size - (len(self.keys) + 1 - n) * 8
 
     def nth_value_ads(self, n: int) -> int:
