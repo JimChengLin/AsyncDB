@@ -60,18 +60,18 @@ class BasicEngine:
         self.task_que = TaskQue()
 
     def malloc(self, size: int) -> int:
-        def is_inside(ptr: int, size: int) -> bool:
+        def is_inside(ptr: int) -> bool:
             if self.on_write:
                 begin, end = self.on_interval
                 return min(ptr + size, end) - max(ptr, begin) >= 0
 
         ptr = self.allocator.malloc(size)
-        if ptr and is_inside(ptr, size):
+        if ptr and is_inside(ptr):
             self.free(ptr, size)
             ptr = 0
         if not ptr:
             ptr = self.async_file.size
-            if is_inside(ptr, size):
+            if is_inside(ptr):
                 ptr += 1
                 self.async_file.size += 2
             self.async_file.size += size
