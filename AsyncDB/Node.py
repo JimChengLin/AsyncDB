@@ -83,7 +83,6 @@ class ValueNode:
 
     def __bytes__(self):
         assert self.key is not None
-        # 0删除 1正常
         result = ED + dumps((self.key, self.value))
         self.size = len(result)
         return result
