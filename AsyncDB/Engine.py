@@ -55,7 +55,7 @@ class BasicEngine:
         self.command_que = SortedList()
         self.file = open(filename, 'rb+', buffering=0)
         self.lock = Lock()
-        self.on_interval = (0, 0)
+        self.on_interval = (0, 1)
         self.on_write = False
         self.task_que = TaskQue()
 
@@ -73,7 +73,7 @@ class BasicEngine:
             ptr = self.async_file.size
             if is_inside(ptr):
                 ptr += 1
-                self.async_file.size += 2
+                self.async_file.size += 1
             self.async_file.size += size
         return ptr
 

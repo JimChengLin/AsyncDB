@@ -1,21 +1,9 @@
 from asyncio import get_event_loop
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
-from functools import wraps
 from os.path import getsize
 
 loop = get_event_loop()
-
-
-def rescue(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception:
-            return func(*args, **kwargs)
-
-    return wrapper
 
 
 class FastIO:
@@ -23,24 +11,20 @@ class FastIO:
         self.cursor = 0
         self.file = open(filename, 'rb+', buffering=0)
 
-    @rescue
     def seek(self, offset: int):
         if offset != self.cursor:
             self.file.seek(offset)
 
-    @rescue
     def read(self, offset: int, length: int):
         self.seek(offset)
         self.cursor = offset + length
         return self.file.read(length)
 
-    @rescue
     def write(self, offset: int, data: bytes):
         self.seek(offset)
         self.cursor = offset + len(data)
         self.file.write(data)
 
-    @rescue
     def exec(self, offset: int, action: callable):
         self.seek(offset)
         result = action(self.file)
