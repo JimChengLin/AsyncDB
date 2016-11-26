@@ -25,7 +25,7 @@ class FastIO:
         self.cursor = offset + len(data)
         self.file.write(data)
 
-    def exec(self, offset: int, action: callable):
+    def exec(self, offset: int, action):
         self.seek(offset)
         result = action(self.file)
         self.cursor = self.file.tell()
@@ -57,7 +57,7 @@ class AsyncFile:
 
         await loop.run_in_executor(self.executor, async_call)
 
-    async def exec(self, offset: int, action: callable):
+    async def exec(self, offset: int, action):
         def async_call():
             io = self.io_que.popleft()
             result = io.exec(offset, action)
