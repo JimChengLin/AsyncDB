@@ -13,7 +13,6 @@ class Task:
 
         if is_active:
             self.ptrs = []
-            # (ptr, size)
             self.free_param = None
 
     def __lt__(self, other: 'Task'):
