@@ -38,7 +38,7 @@ items = await db.items(item_from='begin', item_to='end', max_len=1024, reverse=F
 await db.close()
 ```
 
-###中文
+### 中文
 传统数据库面对高并发，采用多线程和同步IO。本作采用协程和异步IO，基于Python开发。
 
 通过对B-Tree进行调整，能做到许多传统数据库做不到的优化。
